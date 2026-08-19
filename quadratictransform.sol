@@ -979,3 +979,76 @@ contract AdvancedVoting is Ownable, ReentrancyGuard, Pausable {
         );
     }
 
+    /**
+     * @notice Return final winner.
+     */
+    function winner()
+        external
+        view
+        returns (
+            uint256 proposalId,
+            string memory description,
+            uint256 votes
+        )
+    {
+        if (!finalized) {
+            revert PollAlreadyFinalized();
+        }
+
+        if (!quorumReached()) {
+            return (
+                type(uint256).max,
+                "No quorum",
+                0
+            );
+        }
+
+        Proposal storage proposal =
+            proposals[winningProposal];
+
+        return (
+            winningProposal,
+            proposal.description,
+            proposal.votes
+        );
+    }
+
+    /**
+     * @notice Return remaining voting time.
+     */
+    function remainingVotingTime()
+        external
+        view
+        returns (uint256)
+    {
+        if (block.timestamp >= endTime) {
+            return 0;
+        }
+
+        if (block.timestamp < startTime) {
+            return endTime - startTime;
+        }
+
+        return endTime - block.timestamp;
+    }
+
+    /**
+     * @notice Returns whether an address can currently vote.
+     */
+    function canVote(address voter)
+        external
+        view
+        returns (bool)
+    {
+        return (
+            phase == Phase.Voting &&
+            isRegistered[voter] &&
+            delegateOf[voter] == address(0) &&
+            !voteReceipt[voter].hasVoted &&
+            block.timestamp >= startTime &&
+            block.timestamp <= endTime &&
+            !paused()
+        );
+    }
+}
+
